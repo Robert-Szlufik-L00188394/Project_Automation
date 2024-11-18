@@ -1,13 +1,48 @@
-name: Move Card to Todo
+name: Move Assigned Issue to Todo Column
+
 on:
   issues:
-    types: [ assigned ]
+    types:
+      - assigned
+
 jobs:
-  move-assigned-card:
+  move-assigned-issue:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: fojia/action-move-issues-to-column@master
-        with:
-          project: 'Project Automation'
-          column: 'Todo'
-          github_token: ${{ secrets.TOKEN }}
+      # Install jq for JSON parsing (if not pre-installed)
+      - name: Install jq
+        run: sudo apt-get install jq
+
+      # Step 1: Get the Issue ID
+      - name: Get Issue ID
+        id: get-issue
+        run: |
+          ISSUE_ID=$(curl -s -H "Authorization: token ${{ secrets.TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.issue.number }} | jq -r '.id')
+          echo "ISSUE_ID=$ISSUE_ID" >> $GITHUB_ENV
+
+      # Step 2: Get Project and Column IDs
+      - name: Get Project and Column IDs
+        id: get-project-column
+        run: |
+          # Get the project ID for the project named "Project Automation"
+          PROJECT_ID=$(curl -s -H "Authorization: token ${{ secrets.TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.repository }}/projects | jq -r '.[] | select(.name == "Project Automation") | .id')
+          echo "PROJECT_ID=$PROJECT_ID" >> $GITHUB_ENV
+
+          # Get the column ID for the column named "Todo"
+          COLUMN_ID=$(curl -s -H "Authorization: token ${{ secrets.TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/projects/$PROJECT_ID/columns | jq -r '.[] | select(.name == "Todo") | .id')
+          echo "COLUMN_ID=$COLUMN_ID" >> $GITHUB_ENV
+
+      # Step 3: Move the Issue Card to the Todo Column
+      - name: Move Issue Card to Todo
+        run: |
+          curl -X POST -H "Authorization: token ${{ secrets.TOKEN }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/projects/columns/$COLUMN_ID/cards \
+            -d "{\"content_id\": $ISSUE_ID, \"content_type\": \"Issue\"}"
