@@ -10,4 +10,4 @@ jobs:
         with:
           project: 'Project Automation'
           column: 'Todo'
-          repo-token: ${{ secrets.TOKEN }}
+          github_token: ${{ secrets.TOKEN }}
