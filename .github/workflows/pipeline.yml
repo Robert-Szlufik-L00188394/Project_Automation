@@ -1,7 +1,7 @@
 name: Move Card to Todo
 on:
   issues:
-    types: [created]
+    types: [ assigned ]
 jobs:
   move-assigned-card:
     runs-on: ubuntu-latest
